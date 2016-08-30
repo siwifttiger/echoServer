@@ -1,3 +1,6 @@
+//能处理多个客户端请求的回射服务器
+
+
 #include<iostream>
 #include<stdio.h>
 #include<stdlib.h>
@@ -14,8 +17,6 @@
 		perror(m); \
 		exit(EXIT_FAILURE); \
 	}while(0)
-
-
 int main(){
 	int socketfd = -1;
 	//创建一个套接字
@@ -44,28 +45,46 @@ int main(){
 	socklen_t peerlen = sizeof(peeraddr); 	//对等方地址长度
 	//已连接套接字,经accept返回后是主动套接字
 	int conn;
-	if((conn =accept(socketfd,(struct sockaddr*)&peeraddr,&peerlen)) < 0)
-		ERR_EXIT("accept");
-	//连接成功后打印客户端的ip地址和端口号
-	std::cout << "ip = " << inet_ntoa(peeraddr.sin_addr) << " port= " << ntohs(peeraddr.sin_port) << std::endl;
-	//接下来可以进行数据通信了
-	char recvbuf[1024];
+	pid_t pid;
 	while(1){
-		memset(recvbuf,0,sizeof(recvbuf));
-		//获取数据
-		int ret = read(conn,recvbuf,sizeof(recvbuf));
-		char* p = recvbuf+ret;
-		for(int i = 65;i<=70;i++ ){
-			*p=i;
-			p++;
+		if((conn =accept(socketfd,(struct sockaddr*)&peeraddr,&peerlen)) < 0)
+			ERR_EXIT("accept");
+		//连接成功后打印客户端的ip地址和端口号
+		std::cout << "ip = " << inet_ntoa(peeraddr.sin_addr) << " port= " << ntohs(peeraddr.sin_port) << std::endl;
+		//让子进程处理通信
+		pid = fork();
+		if(pid == -1)
+			ERR_EXIT("fork");
+		else if(pid == 0){
+			char sendbuf[1024] = {0};
+			while(fgets(sendbuf,sizeof(sendbuf),stdin) != NULL){
+				write(conn,sendbuf,strlen(sendbuf));
+				memset(sendbuf,0,sizeof(sendbuf));
+			}
+			exit(EXIT_SUCCESS);
+		}
+		else{
+				
+			char recvbuf[1024];
+			while(1){
+				memset(recvbuf,0,sizeof(recvbuf));
+				//获取数据
+				int ret = read(conn,recvbuf,sizeof(recvbuf));
+			//客户端关闭 输出一些信息
+				if(ret == 0){
+					std::cout<< "client close" << std::endl;
+					break;
+				}
+				//失败
+				else if(ret == -1){
+					ERR_EXIT("read");
+				}
+		
+				//打印数据
+				fputs(recvbuf,stdout);
+			}
+			eixt(EXIT_SUCCESS);
 		}	
-		//打印数据
-		fputs(recvbuf,stdout);
-		write(conn,recvbuf,sizeof(recvbuf));
-		memset(recvbuf,0,sizeof(recvbuf));
+
 	}
-	close(conn);
-	close(socketfd);
-
-
 }
