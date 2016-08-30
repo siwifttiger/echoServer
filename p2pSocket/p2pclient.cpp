@@ -7,6 +7,7 @@
 #include <arpa/inet.h>
 #include<error.h>
 #include<unistd.h>
+#include<signal.h>
 #include<string.h>
 #define ERR_EXIT(m) \
 	do\
@@ -15,6 +16,11 @@
 		exit(EXIT_FAILURE); \
 	}while(0)
 
+
+void handler(int sig){
+	std::cout<< "recieve sig " << sig << std::endl;
+	exit(EXIT_SUCCESS);
+}
 
 int main(){
 	int socketfd = -1;
@@ -39,7 +45,7 @@ servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
 	if(pid == 0){
 		//子进程用来接收数据
 		char recvBuf[1024];
-		char *s = "Otherpeer:";
+		char s[1024]; 
 		while(1){
 			memset(recvBuf,0,sizeof(recvBuf));
 			int ret = read(socketfd,recvBuf,sizeof(recvBuf));
@@ -52,33 +58,34 @@ servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
 				break;
 			}
 			else{
-				fputs(recvBuf,stdout);
+				memset(s,1024,sizeof(s));
+				s[0] = 'O';
+				s[1] = 't';
+				s[2] = 'h';
+				s[3] = 'e';
+				s[4] = 'r';
+				s[5] = ' ';
+				s[6] = 0;
+				strcat(s,recvBuf);
+				fputs(s,stdout);
 			}
 		}
-		close(sock);
+		close(socketfd);
+		kill(getppid(),SIGUSR1);
 	}
 	else{
+		signal(SIGUSR1,handler);
 		//父进程用来发送数据
 		char sendBuf[1024] = {0};
 		while(fgets(sendBuf,sizeof(sendBuf),stdin) != NULL){
 			write(socketfd,sendBuf,strlen(sendBuf));
 			memset(sendBuf,0,sizeof(sendBuf));
 		}
-		close(sock);
+		close(socketfd);
+		
 	}
 	
 	
-	//接下来可以进行数据通信了
-	char recvbuf[1024] = {0};
-	char sendbuf[1024] = {0};
-	while(fgets(sendbuf,sizeof(sendbuf),stdin) != NULL){
-		write(socketfd,sendbuf,strlen(sendbuf));
-		read(socketfd,recvbuf,sizeof(recvbuf));
-		fputs(recvbuf,stdout);
-		memset(sendbuf,0,sizeof(sendbuf));
-		memset(recvbuf,0,sizeof(recvbuf));
-	}
-	close(socketfd);
 
 
 }

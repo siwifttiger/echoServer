@@ -9,6 +9,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include<error.h>
+#include<signal.h>
 #include<unistd.h>
 #include<string.h>
 #define ERR_EXIT(m) \
@@ -18,6 +19,11 @@
 		exit(EXIT_FAILURE); \
 	}while(0)
 
+
+void handler(int sig){
+	std::cout << "recieve a signal " << sig << std::endl;
+	exit(EXIT_SUCCESS);
+}
 
 int main(){
 	int socketfd = -1;
@@ -58,12 +64,15 @@ int main(){
 		if(pid == -1)
 			ERR_EXIT("fork");
 		else if(pid == 0){
+			signal(SIGUSR1,handler);
+
 			//子进程用来发送数据
 			char sendbuf[1024] = {0};
 			while(fgets(sendbuf,sizeof(sendbuf),stdin) != NULL){
 				write(conn,sendbuf,strlen(sendbuf));
 				memset(sendbuf,0,sizeof(sendbuf));
 			}
+			std::cout<< "child close" << std::endl;
 			exit(EXIT_SUCCESS);
 		}
 		else{
@@ -101,6 +110,8 @@ int main(){
 					fputs(s,stdout);
 				}
 			}
+			std::cout<< "parent close" << std::endl;
+			kill(pid,SIGUSR1);
 			exit(EXIT_SUCCESS);
 		}
 	}
