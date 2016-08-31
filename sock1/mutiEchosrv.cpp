@@ -17,6 +17,29 @@
 		perror(m); \
 		exit(EXIT_FAILURE); \
 	}while(0)
+
+
+void doService(int conn){
+	char recvBuf[1024];
+	while(1){
+		memset(recvBuf,0,sizeof(recvBuf));
+		int ret = read(conn,recvBuf,sizeof(recvBuf));
+		if(ret == -1){
+			ERR_EXIT("read");
+		}
+		else if(ret == 0){
+			std::cout<< "client close" << std::endl;
+			break;
+		}
+		else{
+			fputs(recvBuf,stdout);
+			write(conn,recvBuf,ret);
+		}
+	}
+}
+
+
+
 int main(){
 	int socketfd = -1;
 	//创建一个套接字
@@ -56,34 +79,12 @@ int main(){
 		if(pid == -1)
 			ERR_EXIT("fork");
 		else if(pid == 0){
-			char sendbuf[1024] = {0};
-			while(fgets(sendbuf,sizeof(sendbuf),stdin) != NULL){
-				write(conn,sendbuf,strlen(sendbuf));
-				memset(sendbuf,0,sizeof(sendbuf));
-			}
+			close(socketfd);
+			doService(conn);
 			exit(EXIT_SUCCESS);
 		}
 		else{
-				
-			char recvbuf[1024];
-			while(1){
-				memset(recvbuf,0,sizeof(recvbuf));
-				//获取数据
-				int ret = read(conn,recvbuf,sizeof(recvbuf));
-			//客户端关闭 输出一些信息
-				if(ret == 0){
-					std::cout<< "client close" << std::endl;
-					break;
-				}
-				//失败
-				else if(ret == -1){
-					ERR_EXIT("read");
-				}
-		
-				//打印数据
-				fputs(recvbuf,stdout);
-			}
-			eixt(EXIT_SUCCESS);
+			close(conn);
 		}	
 
 	}
